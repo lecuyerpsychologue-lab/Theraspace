@@ -3,16 +3,23 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>TheraSpace - Édition Ultimate</title>
+  <title>TheraSpace</title>
   
+  <!-- 1. TAILWIND (Design) -->
   <script src="https://cdn.tailwindcss.com"></script>
+  
+  <!-- 2. REACT (Moteur) -->
   <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  
+  <!-- 3. BABEL (Traducteur) -->
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-  <script src="https://unpkg.com/lucide@latest"></script>
+  
+  <!-- 4. LUCIDE ICONS (CORRECTIF CRITIQUE: Version React UMD) -->
+  <script src="https://unpkg.com/lucide-react@0.263.1/dist/umd/lucide-react.js"></script>
 
   <style>
-    body { background-color: #0f0b1e; color: white; -webkit-tap-highlight-color: transparent; overscroll-behavior-y: none; }
+    body { background-color: #0f0b1e; color: white; -webkit-tap-highlight-color: transparent; overscroll-behavior-y: none; font-family: sans-serif; }
     .scrollbar-hide::-webkit-scrollbar { display: none; }
     .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
     @keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
@@ -23,38 +30,90 @@
     .animate-pulse-slow { animation: pulse-slow 3s infinite; }
     @keyframes flip-in { from { transform: rotateY(90deg); opacity: 0; } to { transform: rotateY(0); opacity: 1; } }
     .animate-flip-in { animation: flip-in 0.6s ease-out; }
+    
+    /* Style pour l'écran de chargement/erreur */
+    #root:empty::before {
+      content: "Chargement de TheraSpace...";
+      display: flex;
+      height: 100vh;
+      justify-content: center;
+      align-items: center;
+      color: #6366f1;
+      font-weight: bold;
+    }
   </style>
 </head>
 <body>
+  <!-- Zone d'affichage des erreurs pour le débogage -->
+  <div id="error-display" style="display:none; color: #ff4444; padding: 20px; background: rgba(0,0,0,0.9); position: fixed; top: 0; left: 0; right: 0; z-index: 9999;"></div>
+  
   <div id="root"></div>
+
+  <script>
+    // Script de sécurité pour afficher les erreurs si l'écran reste bleu
+    window.onerror = function(message, source, lineno, colno, error) {
+      document.getElementById('error-display').style.display = 'block';
+      document.getElementById('error-display').innerHTML = "<h3>Oups ! Une erreur est survenue :</h3><p>" + message + "</p><p>Ligne : " + lineno + "</p>";
+    };
+  </script>
 
   <script type="text/babel">
     const { useState, useEffect, useRef } = React;
+    
+    // --- CORRECTIF ICONS ---
+    // On récupère les icônes depuis l'objet global lucideReact
     const { 
       Home, Book, Activity, User, Play, X, Check, ArrowRight, ArrowLeft,
       Sparkles, Zap, Shield, Heart, MessageCircle, Moon, Sun, Cloud,
       Mic, Image as ImageIcon, Plus, Thermometer, Wind, Fingerprint, 
       Smile, Frown, Meh, Save, Trash2, Mail, Share2, Crown, Swords, Ghost,
       Flame, Anchor, Compass, Lock, Phone, AlertTriangle, SkipForward, Calendar, Clock
-    } = lucide.icons;
+    } = window.lucideReact; 
 
-    /* --- MOTEUR IA SÉCURISÉ (Appelle api/chat.js) --- */
+    // --- CONFIGURATION API ---
+    const MISTRAL_API_KEY = "TA_CLE_ICI"; // Remplacez si vous avez la clé, sinon laissez tel quel
+
+    // --- MOTEUR IA ---
     const callBackend = async (systemPrompt, userPrompt, jsonMode = false) => {
+      // 1. Mode Simulation (Pas de clé)
+      if (MISTRAL_API_KEY === "TA_CLE_ICI") {
+        await new Promise(r => setTimeout(r, 1500));
+        return null; 
+      }
+      // 2. Mode Réel (Appel API via backend sécurisé si configuré, sinon direct pour test)
       try {
-        // L'application appelle VOTRE serveur Vercel, pas Mistral direct
+        // Tentative d'appel au fichier api/chat.js (si configuré sur Vercel)
         const response = await fetch('/api/chat', { 
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ systemPrompt, userPrompt, jsonMode })
         });
         
+        // Si le fichier api/chat.js n'existe pas (404), on tente l'appel direct (risqué mais marche pour test)
+        if (response.status === 404) {
+             console.warn("Backend non trouvé, tentative appel direct (Test only)");
+             const directResponse = await fetch('https://api.mistral.ai/v1/chat/completions', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${MISTRAL_API_KEY}`
+                },
+                body: JSON.stringify({
+                    model: "mistral-small-latest",
+                    response_format: jsonMode ? { type: "json_object" } : { type: "text" },
+                    messages: [{ role: "system", content: systemPrompt }, { role: "user", content: userPrompt }]
+                })
+            });
+            const directData = await directResponse.json();
+            return directData.choices[0].message.content;
+        }
+
         if (!response.ok) throw new Error("Erreur serveur");
-        
         const data = await response.json();
         return data.choices[0].message.content;
       } catch (error) {
         console.error("Erreur IA:", error);
-        return null; // Déclenchera le mode hors ligne/démo
+        return null;
       }
     };
 
@@ -62,22 +121,45 @@
       analyzeHero: async (scores) => {
         const fallback = (() => {
             let archetype = "Guerrier";
-            if (scores.knowledge > scores.competence) archetype = "Sage";
-            else if (scores.belonging > scores.security) archetype = "Gardien";
-            return { title: `${archetype} de Lumière`, stats: scores, mission: "Note une victoire aujourd'hui." };
+            let advice = "Ta force est dans l'action.";
+            if (scores.knowledge > scores.competence) { archetype = "Sage"; advice = "Connaissance de soi."; }
+            else if (scores.belonging > scores.security) { archetype = "Gardien"; advice = "Lien aux autres."; }
+            else if (scores.competence > scores.belonging) { archetype = "Bâtisseur"; advice = "Capacité à créer."; }
+            
+            return {
+                title: `${archetype} de Lumière`,
+                stats: scores,
+                mission: `Ton score de compétence est de ${Math.round((scores.competence/15)*100)}%. Défi : Fais une chose que tu repousses depuis 2 jours.`
+            };
         })();
         
         const system = `Tu es Lya, psy TCC. Analyse les scores et renvoie un JSON { "title": "Nom Archétype", "mission": "Mission courte" }`;
         const user = `Scores: ${JSON.stringify(scores)}`;
         
-        // On appelle le backend
         const res = await callBackend(system, user, true);
-        
         try { return res ? JSON.parse(res) : fallback; } catch (e) { return fallback; }
       },
       
       generateOracle: async () => {
-         const fallback = { title: "Le Phénix", text: "Pour renaître, il faut accepter de brûler un peu." };
+         const SAGES = ["Le Vieux Sage", "L'Esprit de la Forêt", "Le Phénix", "Le Guerrier Pacifique"];
+         const METAPHORS = [
+           "La rivière ne force pas son passage, elle coule.",
+           "Même l'arbre le plus grand a commencé comme une graine.",
+           "Les nuages passent, mais le ciel reste bleu.",
+           "On ne peut pas voir son reflet dans l'eau qui bout."
+         ];
+         const ADVICES = [
+           "Respire et accepte ce moment.",
+           "Ta valeur ne dépend pas de ta réussite.",
+           "Fais un pas, même petit.",
+           "Sois doux avec toi-même aujourd'hui."
+         ];
+         
+         const fallback = { 
+             title: SAGES[Math.floor(Math.random()*SAGES.length)], 
+             text: `"${METAPHORS[Math.floor(Math.random()*METAPHORS.length)]} ${ADVICES[Math.floor(Math.random()*ADVICES.length)]}"` 
+         };
+
          const system = `Tu es l'Oracle. Donne une métaphore courte et sage. JSON: { "title": "Nom", "text": "Message" }`;
          const res = await callBackend(system, "Oracle", true);
          try { return res ? JSON.parse(res) : fallback; } catch (e) { return fallback; }
@@ -85,12 +167,12 @@
       
       synthesizeIdentity: async (answers) => {
           const res = await callBackend("Fais une synthèse 'Cold Reading' bienveillante en 2 phrases.", JSON.stringify(answers), false);
-          return res || "Tu as une personnalité riche et unique.";
+          return res || "Tu as une personnalité riche et des goûts bien affirmés. Ta capacité à savoir ce que tu aimes est une force. (Mode Démo)";
       },
       
       analyzeEcho: async (history) => {
-          const fallback = { observation: "Tu as bien identifié tes émotions.", conseil: "Continue." };
-          const system = `Analyse cette session TCC. Il n'y a plus de thèmes, déduis-les. JSON: { "observation": "...", "conseil": "..." }`;
+          const fallback = { observation: "Tu as traversé des émotions variées.", conseil: "N'oublie pas d'utiliser ta stratégie de gratitude." };
+          const system = `Analyse cette session TCC. JSON: { "observation": "...", "conseil": "..." }`;
           const res = await callBackend(system, JSON.stringify(history), true);
           try { return res ? JSON.parse(res) : fallback; } catch (e) { return fallback; }
       }
@@ -104,29 +186,37 @@
       { id: 4, text: "Tu as envoyé un message risqué à ton crush. 'Vu', pas de réponse depuis 2h.", type: 'neg' },
       { id: 5, text: "Tu te regardes dans le miroir avant de sortir. Rien ne va, tu te trouves horrible.", type: 'neg' },
       { id: 6, text: "On t'interroge à l'oral. Ta gorge se serre, aucun son ne sort.", type: 'neg' },
+      { id: 7, text: "Tu entends ton prénom chuchoté dans le couloir suivi d'un rire moqueur.", type: 'neg' },
+      { id: 8, text: "Dimanche soir. Tu penses à la semaine qui arrive et tu as une boule au ventre.", type: 'neg' },
       { id: 20, text: "Tu as réussi un truc difficile du premier coup. Personne n'a vu, mais tu es fier(e).", type: 'pos' },
       { id: 21, text: "Tu écoutes ta playlist à fond dans ta chambre. Tu te sens invincible.", type: 'pos' },
       { id: 22, text: "Quelqu'un te fait un compliment sincère sur ton style aujourd'hui.", type: 'pos' },
-      { id: 30, text: "Tu es seul(e) chez toi. Le silence est total.", type: 'neu' }
+      { id: 23, text: "Tu as aidé un pote qui n'allait pas bien. Il te remercie.", type: 'pos' },
+      { id: 30, text: "Tu es seul(e) chez toi. Le silence est total.", type: 'neu' },
+      { id: 31, text: "Tu marches dans la rue avec tes écouteurs, tu as l'impression d'être dans un clip.", type: 'neu' }
     ];
+
     const EMOTIONS = [
       { id: 'colere', emoji: '😡', label: 'Rage' }, { id: 'peur', emoji: '😰', label: 'Stress' },
       { id: 'tristesse', emoji: '😢', label: 'Tristesse' }, { id: 'honte', emoji: '😳', label: 'Honte' },
       { id: 'vide', emoji: '😶', label: 'Vide' }, { id: 'calme', emoji: '😌', label: 'Calme' },
       { id: 'joie', emoji: '🤩', label: 'Joie' }, { id: 'confiance', emoji: '🦁', label: 'Fierté' },
     ];
+
     const STRATEGIES = [
       { id: 'parler', icon: MessageCircle, label: "J'en parle" }, { id: 'musique', icon: Play, label: "Musique" },
       { id: 'isolement', icon: Moon, label: "Je m'isole" }, { id: 'sport', icon: Activity, label: "Je bouge" },
       { id: 'scroll', icon: Fingerprint, label: "Écrans" }, { id: 'art', icon: Sparkles, label: "Création" },
       { id: 'gratitude', icon: Heart, label: "Gratitude" }, { id: 'savourer', icon: Sun, label: "Je savoure" },
     ];
+
     const HERO_QUIZ = [
       { cat: 'competence', q: "Je finis ce que je commence." }, { cat: 'competence', q: "Je sais résoudre mes problèmes." }, { cat: 'competence', q: "J'ai des talents dont je suis fier(e)." }, { cat: 'competence', q: "Je réussis aussi bien que les autres." }, { cat: 'competence', q: "Je me sens utile au quotidien." },
       { cat: 'knowledge', q: "Je sais dire ce que je ressens." }, { cat: 'knowledge', q: "Je connais mes points forts." }, { cat: 'knowledge', q: "J'ai mes propres opinions." },
       { cat: 'security', q: "Je me sens bien dans ma peau." }, { cat: 'security', q: "L'avenir ne me fait pas trop peur." }, { cat: 'security', q: "J'accepte mon corps tel qu'il est." },
       { cat: 'belonging', q: "Je me sens aimé(e) par mes proches." }, { cat: 'belonging', q: "J'ai ma place dans un groupe." }, { cat: 'belonging', q: "Je peux compter sur quelqu'un." }
     ];
+
     const IDENTITY_SHORT_QUESTIONS = [
       { id: 'surnom', label: "Mon Surnom" }, { id: 'totem', label: "Animal Totem" }, { id: 'force', label: "Ma Force" }, { id: 'krypto', label: "Ma Faiblesse" },
       { id: 'hobby', label: "Passion n°1" }, { id: 'song', label: "Chanson Hype" }, { id: 'color', label: "Couleur" }, { id: 'place', label: "Refuge" },
@@ -134,13 +224,21 @@
       { id: 'food', label: "Plat confort" }, { id: 'word', label: "Mot préféré" }, { id: 'mood', label: "Vibe actuelle" }
     ];
 
-    /* --- UI --- */
-    const GlassPanel = ({ children, className = '', onClick }) => (<div onClick={onClick} className={`backdrop-blur-xl bg-[#1e1b4b]/70 border border-white/10 shadow-2xl rounded-[32px] overflow-hidden ${className}`}>{children}</div>);
+    /* --- UI HELPERS --- */
+    const GlassPanel = ({ children, className = '', onClick }) => (
+      <div onClick={onClick} className={`backdrop-blur-xl bg-[#1e1b4b]/70 border border-white/10 shadow-2xl rounded-[32px] overflow-hidden ${className}`}>{children}</div>
+    );
     const ActionButton = ({ onClick, children, variant = 'primary', className = '', disabled }) => {
-      const s = { primary: "bg-gradient-to-r from-violet-600 to-indigo-600 shadow-indigo-500/30", secondary: "bg-white/5 border-white/10", accent: "bg-gradient-to-r from-emerald-500 to-teal-500", gold: "bg-gradient-to-r from-amber-400 to-orange-500" };
-      return <button onClick={onClick} disabled={disabled} className={`px-6 py-4 rounded-2xl font-bold transition-all active:scale-95 disabled:opacity-50 flex items-center justify-center gap-2 text-white shadow-lg ${s[variant]} ${className}`}>{children}</button>;
+      const s = { primary: "bg-gradient-to-r from-violet-600 to-indigo-600 text-white shadow-lg shadow-indigo-500/30", secondary: "bg-white/5 text-white border border-white/10", accent: "bg-gradient-to-r from-emerald-500 to-teal-500 text-white", gold: "bg-gradient-to-r from-amber-400 to-orange-500 text-white", };
+      return <button onClick={onClick} disabled={disabled} className={`px-6 py-4 rounded-2xl font-bold transition-all active:scale-95 disabled:opacity-50 flex items-center justify-center gap-2 ${styles[variant]} ${className}`}>{children}</button>;
     };
-    const NavIcon = ({ Icon, active, onClick }) => (<button onClick={onClick} className={`p-2 transition-colors ${active ? 'text-white' : 'text-slate-500 hover:text-slate-300'}`}><Icon size={24} /></button>);
+    const Tag = ({ text, type }) => {
+        const colors = { neutral: 'bg-slate-700/50 text-slate-300', pos: 'bg-emerald-500/20 text-emerald-300', neg: 'bg-rose-500/20 text-rose-300' };
+        return <span className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${colors[type || 'neutral']}`}>{text}</span>;
+    };
+    const NavIcon = ({ Icon, active, onClick }) => (
+      <button onClick={onClick} className={`p-2 transition-colors ${active ? 'text-white' : 'text-slate-500 hover:text-slate-300'}`}><Icon size={24} /></button>
+    );
 
     /* --- MODULES --- */
     const SOSModal = ({ onClose }) => (
@@ -175,13 +273,6 @@
         const card = cards[index];
         const handleNext = () => { const newHistory = [...history, {card, ...current}]; if (index < cards.length - 1) { setHistory(newHistory); setIndex(i=>i+1); setStep('scenario'); setCurrent({vecu:false, emotions:[], strategies:[]}); } else onFinish(newHistory); };
         const toggle = (list, item) => list.includes(item) ? list.filter(i=>i!==item) : [...list, item];
-        return <div className="h-full flex flex-col p-6 pt-10 relative"><div className="flex justify-between items-center mb-6"><button onClick={onExit}><X className="text-slate-400"/></button><span className="text-indigo-400 font-bold text-xs uppercase">Carte {index+1}/{cards.length}</span><div className="w-6"/></div><div className="w-full h-1 bg-slate-800 rounded-full mb-6"><div className="h-full bg-fuchsia-500 transition-all" style={{width: `${((index+1)/cards.length)*100}%`}}/></div><GlassPanel className="flex-1 flex flex-col relative overflow-hidden">{step==='scenario' ? (<div className="flex-1 flex flex-col justify-center items-center p-8 text-center animate-slide-up"><h2 className="text-2xl font-black text-white leading-snug mb-12">"{card.text}"</h2><div className="grid grid-cols-2 gap-4 w-full mt-auto"><ActionButton variant="secondary" onClick={()=>{setCurrent({...current, vecu:false}); handleNext()}}>Pas vécu</ActionButton><ActionButton variant="primary" onClick={()=>{setCurrent({...current, vecu:true}); setStep('interaction')}}>C'est vécu</ActionButton></div></div>) : (<div className="flex-1 flex flex-col p-6 overflow-y-auto animate-slide-up"><button onClick={()=>setStep('scenario')} className="text-slate-400 mb-4 flex gap-2 items-center"><ArrowLeft size={16}/> Retour</button><div className="space-y-6"><div><p className="text-slate-500 text-xs font-bold uppercase mb-2">Émotions</p><div className="flex flex-wrap gap-2">{EMOTIONS.map(e=><button key={e.id} onClick={()=>setCurrent({...current, emotions:toggle(current.emotions, e.id)})} className={`px-3 py-2 rounded-xl border text-sm font-bold flex gap-2 ${current.emotions.includes(e.id)?'bg-fuchsia-500 border-fuchsia-400':'bg-white/5 border-white/10 text-slate-400'}`}>{e.emoji} {e.label}</button>)}</div></div><div><p className="text-slate-500 text-xs font-bold uppercase mb-2">Réaction</p><div className="grid grid-cols-2 gap-2">{STRATEGIES.map(s=>{ const Icon = s.icon; return (<button key={s.id} onClick={()=>setCurrent({...current, strategies:toggle(current.strategies, s.id)})} className={`p-3 rounded-xl border text-sm font-bold flex flex-col items-center gap-2 ${current.strategies.includes(s.id)?'bg-indigo-600 border-indigo-500':'bg-white/5 border-white/10 text-slate-400'}`}><Icon size={18}/> {s.label}</button>)})}</div></div></div><ActionButton onClick={handleNext} disabled={current.emotions.length===0} className="mt-8 w-full">Suivant</ActionButton></div>)}</GlassPanel></div>;
-    };
-
-    const HeroModule = ({ onExit }) => {
-        const [step, setStep] = useState('intro'); const [currentQ, setCurrentQ] = useState(0); const [scores, setScores] = useState({competence:0, knowledge:0, security:0, belonging:0}); const [aiResult, setAiResult] = useState(null);
-        const handleAnswer = (val) => { const cat = HERO_QUIZ[currentQ].cat; const newScores = {...scores, [cat]: scores[cat] + val}; setScores(newScores); if(currentQ < HERO_QUIZ.length-1) setCurrentQ(c=>c+1); else { setStep('loading'); LYA_AI.analyzeHero(newScores).then(res => { setAiResult(res); setStep('result'); }); } };
-        if(step==='intro') return <div className="h-full p-8 flex flex-col items-center justify-center text-center animate-fade-in"><Crown size={64} className="text-amber-400 mb-6"/><h2 className="text-3xl font-black mb-4">Forge des Héros</h2><p className="text-slate-400 mb-8">Découvre tes forces cachées.</p><ActionButton onClick={()=>setStep('quiz')} variant="gold">Commencer</ActionButton><button onClick={onExit} className="mt-8 text-slate-500">Quitter</button></div>;
-        if(step==='quiz') return <div className="h-full p-8 flex flex-col justify-center animate-slide-up"><h3 className="text-xl font-bold mb-8 text-center">"{HERO_QUIZ[currentQ].q}"</h3><div className="grid gap-3"><ActionButton onClick={()=>handleAnswer(3)} variant="secondary">Tout à fait</ActionButton><ActionButton onClick={()=>handleAnswer(2)} variant="secondary">Plutôt oui</ActionButton><ActionButton onClick={()=>handleAnswer(1)} variant="secondary">Plutôt non</ActionButton><ActionButton onClick={()=>handleAnswer(0)} variant="secondary">Pas du tout</ActionButton></div></div>;
-        if(step==='loading') return <div className="h-full flex items-center justify-center"><Sparkles className="animate-spin text-amber-400" size={48}/></div>;
-        return <div className="h-full p-6 pt-10 flex flex-col items-center animate-fade-in"><h2 className="text-2xl font-black text-white mb-6">Ton Avatar</h2><div className="w-full max-w-sm bg-gradient-to-br from-amber-500 to-orange-700 p-1 rounded-3xl shadow-2xl animate-slide-up"><div className="bg-slate-900 rounded-[20px] p-6 flex flex-col items-center text-center"><Crown className="text-amber-400 mb-4" size={40"/><h3 className="text-2xl font-black italic text-white mb-6">{aiResult.title}</h3><div className="w-full space-y-4">
+        return (
+            <div className="h-full flex flex-col p-6 pt-10 relative">
+                <div className="flex justify-between items-center mb-6"><button onClick={onExit}><X className="tex
