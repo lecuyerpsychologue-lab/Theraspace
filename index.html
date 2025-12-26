@@ -1,380 +1,375 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { 
-  Home, Book, Activity, User, 
-  Play, X, Check, ArrowRight, ArrowLeft,
-  Sparkles, Zap, Shield, Heart, 
-  MessageCircle, Moon, Sun, Cloud,
-  Mic, Image as ImageIcon, Plus, 
-  Thermometer, Wind, Fingerprint, 
-  Smile, Frown, Meh, Save, Trash2,
-  Mail, Share2, Crown, Swords, Ghost,
-  Flame, Anchor, Compass, Lock, Phone, AlertTriangle,
-  SkipForward, Calendar, Clock
-} from 'lucide-react';
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>TheraSpace - Espace Thérapeutique</title>
+  
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
 
-/* -------------------------------------------------------------------------
-   🧠 LYA AI ENGINE (SÉCURISÉ via PROXY)
-   ------------------------------------------------------------------------- */
+  <style>
+    body { background-color: #0f0b1e; color: white; -webkit-tap-highlight-color: transparent; overscroll-behavior-y: none; }
+    .scrollbar-hide::-webkit-scrollbar { display: none; }
+    .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+    @keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
+    .animate-fade-in { animation: fade-in 0.5s ease-out; }
+    @keyframes slide-up { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+    .animate-slide-up { animation: slide-up 0.4s ease-out; }
+    @keyframes pulse-slow { 0%, 100% { opacity: 1; } 50% { opacity: 0.7; } }
+    .animate-pulse-slow { animation: pulse-slow 3s infinite; }
+    @keyframes flip-in { from { transform: rotateY(90deg); opacity: 0; } to { transform: rotateY(0); opacity: 1; } }
+    .animate-flip-in { animation: flip-in 0.6s ease-out; }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
 
-const callMistral = async (systemPrompt, userPrompt, jsonMode = false) => {
-  try {
-    // Appel vers NOTRE fichier backend sécurisé (api/chat.js)
-    const response = await fetch('/api/chat', { 
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        systemPrompt,
-        userPrompt,
-        jsonMode
-      })
-    });
+  <script type="text/babel">
+    const { useState, useEffect, useRef } = React;
+    const { 
+      Home, Book, Activity, User, Play, X, Check, ArrowRight, ArrowLeft,
+      Sparkles, Zap, Shield, Heart, MessageCircle, Moon, Sun, Cloud,
+      Mic, Image as ImageIcon, Plus, Thermometer, Wind, Fingerprint, 
+      Smile, Frown, Meh, Save, Trash2, Mail, Share2, Crown, Swords, Ghost,
+      Flame, Anchor, Compass, Lock, Phone, AlertTriangle, SkipForward, Calendar, Clock
+    } = lucide.icons;
 
-    if (!response.ok) throw new Error("Erreur serveur");
-
-    const data = await response.json();
-    return data.choices[0].message.content;
-
-  } catch (error) {
-    console.error("Erreur IA (Mode simulation activé):", error);
-    return null; // Déclenche le fallback (mode démo) si le serveur ne répond pas
-  }
-};
-
-const LYA_AI = {
-  // 1. ANALYSE HÉROS (TCC & Estime de soi)
-  analyzeHero: async (scores) => {
-    // FALLBACK SIMULATION (Si le serveur ne répond pas ou pas de réseau)
-    const fallback = (() => {
-        let archetype = "Guerrier";
-        let advice = "Ta force est dans l'action.";
-        if (scores.knowledge > scores.competence) { archetype = "Sage"; advice = "Ta force est ta connaissance de toi-même."; }
-        else if (scores.belonging > scores.security) { archetype = "Gardien"; advice = "Ta force est ton lien aux autres."; }
-        
-        return {
-            title: `${archetype} de Lumière`,
-            stats: scores,
-            mission: `Ton score de compétence est de ${Math.round((scores.competence/15)*100)}%. Pour le monter, fixe-toi un défi minuscule demain (ex: ranger un tiroir).`
-        };
-    })();
-
-    const systemPrompt = `Tu es Lya, psychologue experte TCC pour ados. Analyse les scores (Compétence, Sécurité, Appartenance, Connaissance) pour créer un profil "Héros" valorisant.
-    Sortie JSON impérative : { "title": "Nom de l'Archétype (ex: Gardien des Liens)", "mission": "Un défi TCC minuscule et bienveillant" }`;
-    
-    const userPrompt = `Scores : Compétence ${scores.competence}/15, Sécurité ${scores.security}/9, Appartenance ${scores.belonging}/9, Connaissance ${scores.knowledge}/9.`;
-
-    const rawResponse = await callMistral(systemPrompt, userPrompt, true);
-    if (!rawResponse) return fallback;
-
-    try {
-      const aiData = JSON.parse(rawResponse);
-      return { title: aiData.title, stats: scores, mission: aiData.mission };
-    } catch (e) { return fallback; }
-  },
-
-  // 2. ORACLE (Motivation & Sagesse)
-  generateOracle: async () => {
-    const SAGES = ["Le Vieux Sage", "L'Esprit de la Forêt", "Le Phénix"];
-    const METAPHORS = ["La rivière ne force pas son passage, elle coule.", "Même l'arbre le plus grand a commencé comme une graine."];
-    const ADVICES = ["Respire et accepte ce moment.", "Fais un pas, même petit."];
-    const fallback = { 
-        title: SAGES[Math.floor(Math.random() * SAGES.length)], 
-        text: `"${METAPHORS[Math.floor(Math.random() * METAPHORS.length)]} ${ADVICES[Math.floor(Math.random() * ADVICES.length)]}"` 
+    /* --- MOTEUR IA VIA API SECURISEE --- */
+    const callBackend = async (systemPrompt, userPrompt, jsonMode = false) => {
+      try {
+        const response = await fetch('/api/chat', { 
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ systemPrompt, userPrompt, jsonMode })
+        });
+        if (!response.ok) throw new Error("Erreur serveur");
+        const data = await response.json();
+        return data.choices[0].message.content;
+      } catch (error) {
+        console.error("Erreur IA:", error);
+        return null;
+      }
     };
-    
-    const systemPrompt = `Tu es l'Oracle. Donne une métaphore courte et sage pour un ado (style Zen ou Stoïcien). JSON : { "title": "Nom du Sage", "text": "Message complet" }`;
-    const rawResponse = await callMistral(systemPrompt, "Donne un oracle maintenant.", true);
-    
-    if (!rawResponse) return fallback;
-    try { return JSON.parse(rawResponse); } catch (e) { return fallback; }
-  },
 
-  // 3. SYNTHÈSE IDENTITÉ
-  synthesizeIdentity: async (answers) => {
-    const systemPrompt = `Fais une synthèse "Cold Reading" bienveillante, courte et percutante (2 phrases) de la personnalité de cet ado basée sur ses réponses. Valorise son unicité.`;
-    const response = await callMistral(systemPrompt, JSON.stringify(answers), false);
-    return response || "Tu as une personnalité riche et des goûts bien affirmés. Ta capacité à savoir ce que tu aimes est une force. (Mode Démo)";
-  },
+    const LYA_AI = {
+      analyzeHero: async (scores) => {
+        const fallback = (() => {
+            let archetype = "Guerrier";
+            if (scores.knowledge > scores.competence) archetype = "Sage";
+            else if (scores.belonging > scores.security) archetype = "Gardien";
+            return { title: `${archetype} de Lumière`, stats: scores, mission: "Note une victoire aujourd'hui." };
+        })();
+        const system = `Tu es Lya, psy TCC. Analyse les scores et renvoie un JSON { "title": "Nom Archétype", "mission": "Mission courte" }`;
+        const user = `Scores: ${JSON.stringify(scores)}`;
+        const res = await callBackend(system, user, true);
+        try { return res ? JSON.parse(res) : fallback; } catch (e) { return fallback; }
+      },
+      generateOracle: async () => {
+         const fallback = { title: "Le Phénix", text: "Pour renaître, il faut accepter de brûler un peu." };
+         const system = `Tu es l'Oracle. Donne une métaphore courte et sage. JSON: { "title": "Nom", "text": "Message" }`;
+         const res = await callBackend(system, "Oracle", true);
+         try { return res ? JSON.parse(res) : fallback; } catch (e) { return fallback; }
+      },
+      synthesizeIdentity: async (answers) => {
+          const res = await callBackend("Fais une synthèse 'Cold Reading' bienveillante en 2 phrases.", JSON.stringify(answers), false);
+          return res || "Tu as une personnalité riche et unique.";
+      },
+      analyzeEcho: async (history) => {
+          const fallback = { observation: "Tu as bien identifié tes émotions.", conseil: "Continue." };
+          const system = `Analyse cette session TCC. JSON: { "observation": "...", "conseil": "..." }`;
+          const res = await callBackend(system, JSON.stringify(history), true);
+          try { return res ? JSON.parse(res) : fallback; } catch (e) { return fallback; }
+      }
+    };
 
-  // 4. FEEDBACK ÉCHO
-  analyzeEcho: async (history) => {
-    const fallback = { observation: "Tu as traversé des émotions variées.", conseil: "N'oublie pas d'utiliser ta stratégie de gratitude." };
-    
-    const systemPrompt = `Tu es une IA psychologue. Analyse cette session. Il n'y a plus de thèmes affichés, déduis les zones de fragilité du contenu. 
-    Sortie JSON : { "observation": "Observation empathique", "conseil": "Conseil actionnable" }`;
-    const rawResponse = await callMistral(systemPrompt, JSON.stringify(history), true);
-    
-    if(!rawResponse) return fallback;
-    try { return JSON.parse(rawResponse); } catch (e) { return fallback; }
-  }
-};
+    /* --- DONNEES --- */
+    const REALISTIC_SCENARIOS = [
+      { id: 1, text: "Tu ouvres Insta et tu tombes sur une story : tous tes potes sont ensemble sans toi.", type: 'neg' },
+      { id: 2, text: "Le prof rend les contrôles. Tu caches ta feuille car tu as honte de ta note.", type: 'neg' },
+      { id: 3, text: "Tes parents te reprochent encore d'être 'tout le temps sur ton téléphone'.", type: 'neg' },
+      { id: 4, text: "Tu as envoyé un message risqué à ton crush. 'Vu', pas de réponse depuis 2h.", type: 'neg' },
+      { id: 5, text: "Tu te regardes dans le miroir avant de sortir. Rien ne va, tu te trouves horrible.", type: 'neg' },
+      { id: 6, text: "On t'interroge à l'oral. Ta gorge se serre, aucun son ne sort.", type: 'neg' },
+      { id: 20, text: "Tu as réussi un truc difficile du premier coup. Personne n'a vu, mais tu es fier(e).", type: 'pos' },
+      { id: 21, text: "Tu écoutes ta playlist à fond. Tu te sens invincible.", type: 'pos' },
+      { id: 22, text: "Quelqu'un te fait un compliment sincère sur ton style aujourd'hui.", type: 'pos' },
+      { id: 30, text: "Tu es seul(e) chez toi. Le silence est total.", type: 'neu' }
+    ];
+    const EMOTIONS = [
+      { id: 'colere', emoji: '😡', label: 'Rage' }, { id: 'peur', emoji: '😰', label: 'Stress' },
+      { id: 'tristesse', emoji: '😢', label: 'Tristesse' }, { id: 'honte', emoji: '😳', label: 'Honte' },
+      { id: 'vide', emoji: '😶', label: 'Vide' }, { id: 'calme', emoji: '😌', label: 'Calme' },
+      { id: 'joie', emoji: '🤩', label: 'Joie' }, { id: 'confiance', emoji: '🦁', label: 'Fierté' },
+    ];
+    const STRATEGIES = [
+      { id: 'parler', icon: MessageCircle, label: "J'en parle" }, { id: 'musique', icon: Play, label: "Musique" },
+      { id: 'isolement', icon: Moon, label: "Je m'isole" }, { id: 'sport', icon: Activity, label: "Je bouge" },
+      { id: 'scroll', icon: Fingerprint, label: "Écrans" }, { id: 'art', icon: Sparkles, label: "Création" },
+      { id: 'gratitude', icon: Heart, label: "Gratitude" }, { id: 'savourer', icon: Sun, label: "Je savoure" },
+    ];
+    const HERO_QUIZ = [
+      { cat: 'competence', q: "Je finis ce que je commence." }, { cat: 'competence', q: "Je sais résoudre mes problèmes." }, { cat: 'competence', q: "J'ai des talents dont je suis fier(e)." }, { cat: 'competence', q: "Je réussis aussi bien que les autres." }, { cat: 'competence', q: "Je me sens utile au quotidien." },
+      { cat: 'knowledge', q: "Je sais dire ce que je ressens." }, { cat: 'knowledge', q: "Je connais mes points forts." }, { cat: 'knowledge', q: "J'ai mes propres opinions." },
+      { cat: 'security', q: "Je me sens bien dans ma peau." }, { cat: 'security', q: "L'avenir ne me fait pas trop peur." }, { cat: 'security', q: "J'accepte mon corps tel qu'il est." },
+      { cat: 'belonging', q: "Je me sens aimé(e) par mes proches." }, { cat: 'belonging', q: "J'ai ma place dans un groupe." }, { cat: 'belonging', q: "Je peux compter sur quelqu'un." }
+    ];
+    const IDENTITY_SHORT_QUESTIONS = [
+      { id: 'surnom', label: "Mon Surnom" }, { id: 'totem', label: "Animal Totem" }, { id: 'force', label: "Ma Force" }, { id: 'krypto', label: "Ma Faiblesse" },
+      { id: 'hobby', label: "Passion n°1" }, { id: 'song', label: "Chanson Hype" }, { id: 'color', label: "Couleur" }, { id: 'place', label: "Refuge" },
+      { id: 'season', label: "Saison" }, { id: 'dream', label: "Rêve fou" }, { id: 'fear', label: "Peur" }, { id: 'hero', label: "Idole" },
+      { id: 'food', label: "Plat confort" }, { id: 'word', label: "Mot préféré" }, { id: 'mood', label: "Vibe actuelle" }
+    ];
 
-/* -------------------------------------------------------------------------
-   DATA: CONTENU CLINIQUES & SCÉNARIOS
-   ------------------------------------------------------------------------- */
+    /* --- UI --- */
+    const GlassPanel = ({ children, className = '', onClick }) => (
+      <div onClick={onClick} className={`backdrop-blur-xl bg-[#1e1b4b]/70 border border-white/10 shadow-2xl rounded-[32px] overflow-hidden ${className}`}>{children}</div>
+    );
+    const ActionButton = ({ onClick, children, variant = 'primary', className = '', disabled }) => {
+      const styles = {
+        primary: "bg-gradient-to-r from-violet-600 to-indigo-600 text-white shadow-lg shadow-indigo-500/30 border-none",
+        secondary: "bg-white/5 text-white border border-white/10 hover:bg-white/10",
+        accent: "bg-gradient-to-r from-emerald-500 to-teal-500 text-white",
+        gold: "bg-gradient-to-r from-amber-400 to-orange-500 text-white",
+      };
+      return <button onClick={onClick} disabled={disabled} className={`px-6 py-4 rounded-2xl font-bold transition-all active:scale-95 disabled:opacity-50 flex items-center justify-center gap-2 ${styles[variant]} ${className}`}>{children}</button>;
+    };
+    const Tag = ({ text, type }) => {
+        const colors = { neutral: 'bg-slate-700/50 text-slate-300', pos: 'bg-emerald-500/20 text-emerald-300', neg: 'bg-rose-500/20 text-rose-300' };
+        return <span className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${colors[type || 'neutral']}`}>{text}</span>;
+    };
+    const NavIcon = ({ Icon, active, onClick }) => (
+      <button onClick={onClick} className={`p-2 transition-colors ${active ? 'text-white' : 'text-slate-500 hover:text-slate-300'}`}><Icon size={24} /></button>
+    );
 
-const EMOTIONS = [
-  { id: 'colere', emoji: '😡', label: 'Rage' },
-  { id: 'peur', emoji: '😰', label: 'Stress' },
-  { id: 'tristesse', emoji: '😢', label: 'Tristesse' },
-  { id: 'honte', emoji: '😳', label: 'Honte' },
-  { id: 'vide', emoji: '😶', label: 'Vide' },
-  { id: 'calme', emoji: '😌', label: 'Calme' },
-  { id: 'joie', emoji: '🤩', label: 'Joie' },
-  { id: 'confiance', emoji: '🦁', label: 'Fierté' },
-];
-
-const STRATEGIES = [
-  { id: 'parler', icon: <MessageCircle size={18}/>, label: "J'en parle" },
-  { id: 'musique', icon: <Play size={18}/>, label: "Musique" },
-  { id: 'isolement', icon: <Moon size={18}/>, label: "Je m'isole" },
-  { id: 'sport', icon: <Activity size={18}/>, label: "Je bouge" },
-  { id: 'scroll', icon: <Fingerprint size={18}/>, label: "Écrans" },
-  { id: 'art', icon: <Sparkles size={18}/>, label: "Création" },
-  { id: 'gratitude', icon: <Heart size={18}/>, label: "Gratitude" },
-  { id: 'savourer', icon: <Sun size={18}/>, label: "Je savoure" },
-];
-
-// Génération de scénarios réalistes (Pool étendu)
-const REALISTIC_SCENARIOS = [
-  // Négatifs
-  { id: 1, text: "Tu ouvres Insta et tu tombes sur une story : tous tes potes sont ensemble sans toi.", type: 'neg', theme: 'Social' },
-  { id: 2, text: "Le prof rend les contrôles. Tu caches ta feuille car tu as honte de ta note.", type: 'neg', theme: 'Scolaire' },
-  { id: 3, text: "Tes parents te reprochent encore d'être 'tout le temps sur ton téléphone'.", type: 'neg', theme: 'Famille' },
-  { id: 4, text: "Tu as envoyé un message risqué à ton crush. 'Vu', pas de réponse depuis 2h.", type: 'neg', theme: 'Amour' },
-  { id: 5, text: "Tu te regardes dans le miroir avant de sortir. Rien ne va, tu te trouves horrible.", type: 'neg', theme: 'Image' },
-  { id: 6, text: "On t'interroge à l'oral. Ta gorge se serre, aucun son ne sort, tout le monde te regarde.", type: 'neg', theme: 'Scolaire' },
-  { id: 7, text: "Tu entends ton prénom chuchoté dans le couloir suivi d'un rire moqueur.", type: 'neg', theme: 'Social' },
-  { id: 8, text: "Dimanche soir. Tu penses à la semaine qui arrive et tu as une boule au ventre.", type: 'neg', theme: 'Avenir' },
-  
-  // Positifs
-  { id: 20, text: "Tu as réussi un truc difficile du premier coup. Personne n'a vu, mais tu es fier(e).", type: 'pos', theme: 'Estime' },
-  { id: 21, text: "Tu écoutes ta playlist à fond dans ta chambre. Tu te sens invincible.", type: 'pos', theme: 'Ressource' },
-  { id: 22, text: "Quelqu'un te fait un compliment sincère sur ton style aujourd'hui.", type: 'pos', theme: 'Social' },
-  { id: 23, text: "Tu as aidé un pote qui n'allait pas bien. Il te remercie.", type: 'pos', theme: 'Utilité' },
-  { id: 24, text: "Tu viens de finir une série incroyable, tu ressens ce mélange de vide et de joie.", type: 'pos', theme: 'Passion' },
-  
-  // Neutres / Ambigus
-  { id: 30, text: "Tu es seul(e) chez toi. Le silence est total.", type: 'neu', theme: 'Solitude' },
-  { id: 31, text: "Tu marches dans la rue avec tes écouteurs, tu as l'impression d'être dans un clip.", type: 'neu', theme: 'Imaginaire' }
-];
-
-const HERO_QUIZ = [
-  // Compétence (5)
-  { cat: 'competence', q: "Quand je commence quelque chose, je le finis." },
-  { cat: 'competence', q: "Je me sens capable de résoudre mes problèmes." },
-  { cat: 'competence', q: "J'ai des talents dont je suis fier(e)." },
-  { cat: 'competence', q: "Je réussis ce que j'entreprends aussi bien que les autres." },
-  { cat: 'competence', q: "Je me sens utile au quotidien." },
-  // Connaissance (3)
-  { cat: 'knowledge', q: "Je sais identifier ce que je ressens." },
-  { cat: 'knowledge', q: "Je connais mes forces et mes faiblesses." },
-  { cat: 'knowledge', q: "J'ai mes propres opinions, même si elles sont différentes." },
-  // Sécurité (3)
-  { cat: 'security', q: "Je me sens en sécurité avec moi-même." },
-  { cat: 'security', q: "Je n'ai pas peur de l'avenir." },
-  { cat: 'security', q: "Je m'accepte physiquement." },
-  // Appartenance (3)
-  { cat: 'belonging', q: "Je me sens aimé(e) par mes proches." },
-  { cat: 'belonging', q: "J'ai l'impression de faire partie d'un groupe." },
-  { cat: 'belonging', q: "Je peux compter sur quelqu'un en cas de pépin." },
-];
-
-const IDENTITY_SHORT_QUESTIONS = [
-  { id: 'surnom', label: "Mon Surnom" },
-  { id: 'totem', label: "Animal Totem" },
-  { id: 'force', label: "Ma Force" },
-  { id: 'krypto', label: "Ma Faiblesse" },
-  { id: 'hobby', label: "Passion n°1" },
-  { id: 'song', label: "Chanson Hype" },
-  { id: 'color', label: "Couleur" },
-  { id: 'place', label: "Refuge" },
-  { id: 'season', label: "Saison" },
-  { id: 'dream', label: "Rêve fou" },
-  { id: 'fear', label: "Peur" },
-  { id: 'hero', label: "Idole" },
-  { id: 'food', label: "Plat confort" },
-  { id: 'word', label: "Mot préféré" },
-  { id: 'mood', label: "Vibe actuelle" },
-];
-
-/* -------------------------------------------------------------------------
-   COMPOSANTS UI (GLASS DESIGN)
-   ------------------------------------------------------------------------- */
-
-const GlassPanel = ({ children, className = '', onClick }) => (
-  <div onClick={onClick} className={`backdrop-blur-xl bg-[#1e1b4b]/70 border border-white/10 shadow-2xl rounded-[32px] overflow-hidden ${className}`}>
-    {children}
-  </div>
-);
-
-const ActionButton = ({ onClick, children, variant = 'primary', className = '', disabled }) => {
-  const styles = {
-    primary: "bg-gradient-to-r from-violet-600 to-indigo-600 text-white shadow-lg shadow-indigo-500/30 hover:shadow-indigo-500/50 border-none",
-    secondary: "bg-white/5 text-white border border-white/10 hover:bg-white/10",
-    accent: "bg-gradient-to-r from-emerald-500 to-teal-500 text-white shadow-lg shadow-emerald-500/30",
-    gold: "bg-gradient-to-r from-amber-400 to-orange-500 text-white shadow-lg shadow-amber-500/30",
-    danger: "bg-gradient-to-r from-red-600 to-rose-600 text-white shadow-lg shadow-red-500/30",
-  };
-  return (
-    <button 
-      onClick={onClick} disabled={disabled}
-      className={`px-6 py-4 rounded-2xl font-bold transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 ${styles[variant]} ${className}`}
-    >
-      {children}
-    </button>
-  );
-};
-
-const Tag = ({ text, type = 'neutral' }) => {
-  const colors = {
-    neutral: 'bg-slate-700/50 text-slate-300',
-    pos: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30',
-    neg: 'bg-rose-500/20 text-rose-300 border-rose-500/30',
-  };
-  return (
-    <span className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border border-transparent ${colors[type]}`}>
-      {text}
-    </span>
-  );
-};
-
-const NavIcon = ({ icon, active, onClick }) => (
-  <button onClick={onClick} className={`p-2 transition-colors ${active ? 'text-white' : 'text-slate-500 hover:text-slate-300'}`}>{icon}</button>
-);
-
-/* -------------------------------------------------------------------------
-   MODULES
-   ------------------------------------------------------------------------- */
-
-// --- SOS MODAL ---
-const SOSModal = ({ onClose }) => (
-  <div className="absolute inset-0 z-[100] bg-slate-900/95 backdrop-blur-xl flex items-center justify-center p-6 animate-fade-in">
-    <div className="w-full max-w-sm bg-[#1e1b4b] border border-red-500/30 rounded-[32px] p-6 text-center shadow-[0_0_50px_rgba(220,38,38,0.3)]">
-      <div className="w-20 h-20 bg-red-500/20 rounded-full flex items-center justify-center mx-auto mb-6 text-red-500 animate-pulse">
-        <AlertTriangle size={40}/>
-      </div>
-      <h2 className="text-3xl font-black text-white mb-2">Besoin d'aide ?</h2>
-      <p className="text-slate-300 mb-8 text-sm font-medium">Tu n'es pas seul(e). Parler peut tout changer.</p>
-      
-      <div className="space-y-4">
-        <a href="tel:3114" className="block w-full bg-red-600 hover:bg-red-700 text-white font-bold py-5 rounded-2xl shadow-lg flex items-center justify-center gap-3 transition-transform active:scale-95 text-lg">
-          <Phone size={24}/> 31 14 (Écoute)
-        </a>
-        <a href="tel:15" className="block w-full bg-white hover:bg-slate-100 text-slate-900 font-bold py-5 rounded-2xl shadow-lg flex items-center justify-center gap-3 transition-transform active:scale-95 text-lg">
-          <Activity size={24}/> 15 (Urgence)
-        </a>
-      </div>
-      <button onClick={onClose} className="mt-8 text-slate-500 font-bold text-sm uppercase tracking-widest hover:text-white transition-colors">Retour</button>
-    </div>
-  </div>
-);
-
-// --- AUTH SCREEN ---
-const AuthScreen = ({ onLogin }) => {
-  const [email, setEmail] = useState('');
-  const [pin, setPin] = useState('');
-  return (
-    <div className="h-full flex flex-col items-center justify-center p-8 relative animate-fade-in">
-      <div className="w-24 h-24 rounded-full bg-gradient-to-tr from-violet-600 to-indigo-600 flex items-center justify-center shadow-[0_0_50px_rgba(139,92,246,0.5)] mb-8 border-4 border-[#0f0b1e]">
-        <Fingerprint size={40} className="text-white"/>
-      </div>
-      <h1 className="text-3xl font-black text-white mb-2">TheraSpace</h1>
-      <p className="text-slate-400 mb-10 text-center">Ton refuge numérique.</p>
-      <div className="w-full space-y-4">
-        <GlassPanel className="p-4 flex items-center gap-3"><Mail className="text-slate-500" size={20}/><input type="email" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} className="bg-transparent text-white w-full focus:outline-none"/></GlassPanel>
-        <GlassPanel className="p-4 flex items-center gap-3"><Lock className="text-slate-500" size={20}/><input type="password" placeholder="Code secret" value={pin} onChange={(e) => setPin(e.target.value)} className="bg-transparent text-white w-full focus:outline-none font-bold tracking-widest"/></GlassPanel>
-        <ActionButton onClick={() => onLogin({ name: email.split('@')[0], email })} disabled={!email || pin.length < 4} className="w-full mt-4">Entrer <ArrowRight/></ActionButton>
-      </div>
-    </div>
-  );
-};
-
-// --- DASHBOARD ---
-const Dashboard = ({ onNavigate, user }) => {
-  const [showSOS, setShowSOS] = useState(false);
-
-  return (
-    <div className="h-full overflow-y-auto scrollbar-hide p-6 pt-10 pb-32 space-y-8 animate-fade-in relative">
-      {showSOS && <SOSModal onClose={() => setShowSOS(false)} />}
-      
-      <header className="flex justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-black text-white tracking-tight mb-1">Salut {user?.name || 'l\'ami'}</h1>
-          <p className="text-indigo-300 font-medium text-sm">Espace Sécurisé</p>
-        </div>
-        <div className="flex gap-3">
-          <button onClick={() => setShowSOS(true)} className="w-12 h-12 rounded-full bg-red-500/10 border border-red-500/20 flex items-center justify-center hover:bg-red-500/20 transition-colors animate-pulse-slow shadow-[0_0_15px_rgba(239,68,68,0.2)]">
-             <AlertTriangle size={24} className="text-red-500"/>
-          </button>
-          <button onClick={() => onNavigate('profile')} className="w-12 h-12 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center overflow-hidden shadow-lg hover:border-indigo-500 transition-colors">
-            <User size={24} className="text-slate-400"/>
-          </button>
-        </div>
-      </header>
-
-      <div onClick={() => onNavigate('echo')} className="relative group cursor-pointer transform transition-transform active:scale-95">
-        <div className="absolute inset-0 bg-gradient-to-r from-violet-600 via-fuchsia-600 to-indigo-600 rounded-[32px] blur opacity-40 group-hover:opacity-60 transition-opacity duration-500"/>
-        <GlassPanel className="relative p-8 flex items-center justify-between">
-          <div>
-            <div className="flex items-center gap-2 mb-2">
-              <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse"/>
-              <span className="text-xs font-bold text-indigo-200 uppercase tracking-wider">Lya Active</span>
+    /* --- MODULES --- */
+    const SOSModal = ({ onClose }) => (
+        <div className="absolute inset-0 z-[100] bg-slate-900/95 backdrop-blur-xl flex items-center justify-center p-6 animate-fade-in">
+            <div className="w-full max-w-sm bg-[#1e1b4b] border border-red-500/30 rounded-[32px] p-6 text-center shadow-[0_0_50px_rgba(220,38,38,0.3)]">
+                <div className="w-20 h-20 bg-red-500/20 rounded-full flex items-center justify-center mx-auto mb-6 text-red-500 animate-pulse"><AlertTriangle size={40}/></div>
+                <h2 className="text-3xl font-black text-white mb-2">Besoin d'aide ?</h2>
+                <div className="space-y-4">
+                    <a href="tel:3114" className="block w-full bg-red-600 text-white font-bold py-5 rounded-2xl shadow-lg flex items-center justify-center gap-3"><Phone size={24}/> 31 14 (Écoute)</a>
+                    <a href="tel:15" className="block w-full bg-white text-slate-900 font-bold py-5 rounded-2xl shadow-lg flex items-center justify-center gap-3"><Activity size={24}/> 15 (Urgence)</a>
+                </div>
+                <button onClick={onClose} className="mt-8 text-slate-500 font-bold text-sm uppercase tracking-widest">Retour</button>
             </div>
-            <h3 className="text-3xl font-black text-white mb-2">ÉCHO</h3>
-            <p className="text-slate-300 text-sm max-w-[150px] leading-tight">Exploration guidée & feedback</p>
-          </div>
-          <div className="w-16 h-16 rounded-full bg-white/10 flex items-center justify-center text-white border border-white/20 shadow-inner">
-            <Play fill="currentColor" size={24}/>
-          </div>
-        </GlassPanel>
-      </div>
+        </div>
+    );
 
-      <div className="grid grid-cols-2 gap-4">
-        <GlassPanel className="p-6 hover:bg-white/5 cursor-pointer transition-colors active:scale-95" onClick={() => onNavigate('journal')}>
-          <Book className="text-emerald-400 mb-4" size={28}/>
-          <h4 className="font-bold text-white text-lg">Journal</h4>
-          <p className="text-slate-400 text-xs">Pensées privées</p>
-        </GlassPanel>
-        <GlassPanel className="p-6 hover:bg-white/5 cursor-pointer transition-colors active:scale-95" onClick={() => onNavigate('hero')}>
-          <Shield className="text-amber-400 mb-4" size={28}/>
-          <h4 className="font-bold text-white text-lg">Héros</h4>
-          <p className="text-slate-400 text-xs">Estime de soi</p>
-        </GlassPanel>
-      </div>
-    </div>
-  );
-};
+    const AuthScreen = ({ onLogin }) => {
+        const [email, setEmail] = useState(''); const [pin, setPin] = useState('');
+        return (
+            <div className="h-full flex flex-col items-center justify-center p-8 animate-fade-in">
+                <div className="w-24 h-24 rounded-full bg-gradient-to-tr from-violet-600 to-indigo-600 flex items-center justify-center shadow-[0_0_50px_rgba(139,92,246,0.5)] mb-8 border-4 border-[#0f0b1e]"><Fingerprint size={40} className="text-white"/></div>
+                <h1 className="text-3xl font-black text-white mb-2">TheraSpace</h1>
+                <p className="text-slate-400 mb-10">Ton refuge numérique.</p>
+                <div className="w-full space-y-4">
+                    <GlassPanel className="p-4 flex items-center gap-3"><Mail className="text-slate-500" size={20}/><input type="email" placeholder="Email" value={email} onChange={e=>setEmail(e.target.value)} className="bg-transparent text-white w-full focus:outline-none"/></GlassPanel>
+                    <GlassPanel className="p-4 flex items-center gap-3"><Lock className="text-slate-500" size={20}/><input type="password" placeholder="Code (ex: 0000)" value={pin} onChange={e=>setPin(e.target.value)} className="bg-transparent text-white w-full focus:outline-none font-bold tracking-widest"/></GlassPanel>
+                    <ActionButton onClick={() => onLogin({ name: email.split('@')[0] || 'Voyageur' })} disabled={!email || pin.length < 4} className="w-full mt-4">Entrer <ArrowRight/></ActionButton>
+                </div>
+            </div>
+        );
+    };
 
-// --- HERO MODULE (TCC COMPLETE) ---
-const HeroModule = ({ onExit }) => {
-  const [step, setStep] = useState('intro'); // intro, quiz, analyzing, result
-  const [scores, setScores] = useState({ competence: 0, knowledge: 0, security: 0, belonging: 0 });
-  const [currentQ, setCurrentQ] = useState(0);
-  const [aiResult, setAiResult] = useState(null);
+    const Dashboard = ({ onNavigate, user }) => {
+        const [showSOS, setShowSOS] = useState(false);
+        return (
+            <div className="h-full overflow-y-auto scrollbar-hide p-6 pt-10 pb-32 space-y-8 animate-fade-in relative">
+                {showSOS && <SOSModal onClose={() => setShowSOS(false)} />}
+                <header className="flex justify-between items-center">
+                    <div><h1 className="text-3xl font-black text-white tracking-tight mb-1">Salut {user.name}</h1><p className="text-indigo-300 text-sm">Espace Sécurisé</p></div>
+                    <div className="flex gap-3">
+                        <button onClick={()=>setShowSOS(true)} className="w-12 h-12 rounded-full bg-red-500/10 border border-red-500/20 flex items-center justify-center text-red-500 animate-pulse"><AlertTriangle size={24}/></button>
+                        <button onClick={()=>onNavigate('profile')} className="w-12 h-12 rounded-full bg-slate-800 flex items-center justify-center text-slate-400"><User size={24}/></button>
+                    </div>
+                </header>
+                <div onClick={()=>onNavigate('echo')} className="relative group cursor-pointer active:scale-95 transition-transform"><div className="absolute inset-0 bg-gradient-to-r from-violet-600 to-indigo-600 rounded-[32px] blur opacity-60"/><GlassPanel className="relative p-8 flex items-center justify-between"><div><div className="flex items-center gap-2 mb-2"><span className="w-2 h-2 rounded-full bg-green-400 animate-pulse"/><span className="text-xs font-bold text-indigo-200 uppercase tracking-wider">Lya Active</span></div><h3 className="text-3xl font-black text-white mb-2">ÉCHO</h3><p className="text-slate-300 text-sm">Exploration guidée</p></div><div className="w-16 h-16 rounded-full bg-white/10 flex items-center justify-center text-white"><Play size={24}/></div></GlassPanel></div>
+                <div className="grid grid-cols-2 gap-4">
+                    <GlassPanel className="p-6 active:scale-95 transition-transform" onClick={()=>onNavigate('journal')}><Book className="text-emerald-400 mb-4" size={28}/><h4 className="font-bold text-white">Journal</h4></GlassPanel>
+                    <GlassPanel className="p-6 active:scale-95 transition-transform" onClick={()=>onNavigate('hero')}><Shield className="text-amber-400 mb-4" size={28}/><h4 className="font-bold text-white">Héros</h4></GlassPanel>
+                </div>
+            </div>
+        );
+    };
 
-  const handleAnswer = (value) => {
-    const q = HERO_QUIZ[currentQ];
-    const newScores = { ...scores, [q.cat]: scores[q.cat] + value };
-    setScores(newScores);
+    const EchoGame = ({ onExit, onFinish }) => {
+        const [cards, setCards] = useState(REALISTIC_SCENARIOS.sort(()=>0.5-Math.random()).slice(0,10));
+        const [index, setIndex] = useState(0);
+        const [step, setStep] = useState('scenario');
+        const [history, setHistory] = useState([]);
+        const [current, setCurrent] = useState({vecu:false, emotions:[], strategies:[]});
+        const card = cards[index];
 
-    if (currentQ < HERO_QUIZ.length - 1) {
-      setCurrentQ(currentQ + 1);
-    } else {
-      setStep('analyzing');
-      LYA_AI.analyzeHero(newScores).then(res => {
-        setAiResult(res);
-        setStep('result');
-      });
-    }
-  };
+        const handleNext = () => {
+            const newHistory = [...history, {card, ...current}];
+            if (index < cards.length - 1) { setHistory(newHistory); setIndex(i=>i+1); setStep('scenario'); setCurrent({vecu:false, emotions:[], strategies:[]}); }
+            else onFinish(newHistory);
+        };
+        const toggle = (list, item) => list.includes(item) ? list.filter(i=>i!==item) : [...list, item];
 
-  const HeroCard = ({ data }) => (
-    <div className="relative w-full aspect-[3/4] max-w-sm mx-auto bg-gradient-to-br from-amber-500 to-orange-700 rounded-3xl p-1 shadow-2xl animate-flip-in">
-      <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/stardust.png')] opacity-30 mix-blend-overlay"/>
-      <div className="w-full h-full bg-slate-900 rounded-[20px] p-6 flex flex-col relative overflow-hidden">
-        <div className="flex justify-between items-start mb-6">
-          <h3 className="text-2xl font-black text-white italic">{data.title}</h3>
-          <Crown className="text-amber-400" size={32}/>
-        <
+        return (
+            <div className="h-full flex flex-col p-6 pt-10 relative">
+                <div className="flex justify-between items-center mb-6"><button onClick={onExit}><X className="text-slate-400"/></button><span className="text-indigo-400 font-bold text-xs uppercase">Carte {index+1}/{cards.length}</span><div className="w-6"/></div>
+                <div className="w-full h-1 bg-slate-800 rounded-full mb-6"><div className="h-full bg-fuchsia-500 transition-all" style={{width: `${((index+1)/cards.length)*100}%`}}/></div>
+                <GlassPanel className="flex-1 flex flex-col relative overflow-hidden">
+                    {step==='scenario' ? (
+                        <div className="flex-1 flex flex-col justify-center items-center p-8 text-center animate-slide-up">
+                            <h2 className="text-2xl font-black text-white leading-snug mb-12">"{card.text}"</h2>
+                            <div className="grid grid-cols-2 gap-4 w-full mt-auto">
+                                <ActionButton variant="secondary" onClick={()=>{setCurrent({...current, vecu:false}); handleNext()}}>Pas vécu</ActionButton>
+                                <ActionButton variant="primary" onClick={()=>{setCurrent({...current, vecu:true}); setStep('interaction')}}>C'est vécu</ActionButton>
+                            </div>
+                        </div>
+                    ) : (
+                        <div className="flex-1 flex flex-col p-6 overflow-y-auto animate-slide-up">
+                            <button onClick={()=>setStep('scenario')} className="text-slate-400 mb-4 flex gap-2 items-center"><ArrowLeft size={16}/> Retour</button>
+                            <div className="space-y-6">
+                                <div><p className="text-slate-500 text-xs font-bold uppercase mb-2">Émotions</p><div className="flex flex-wrap gap-2">{EMOTIONS.map(e=><button key={e.id} onClick={()=>setCurrent({...current, emotions:toggle(current.emotions, e.id)})} className={`px-3 py-2 rounded-xl border text-sm font-bold flex gap-2 ${current.emotions.includes(e.id)?'bg-fuchsia-500 border-fuchsia-400':'bg-white/5 border-white/10 text-slate-400'}`}>{e.emoji} {e.label}</button>)}</div></div>
+                                <div><p className="text-slate-500 text-xs font-bold uppercase mb-2">Réaction</p><div className="grid grid-cols-2 gap-2">{STRATEGIES.map(s=>{ const Icon = s.icon; return (<button key={s.id} onClick={()=>setCurrent({...current, strategies:toggle(current.strategies, s.id)})} className={`p-3 rounded-xl border text-sm font-bold flex flex-col items-center gap-2 ${current.strategies.includes(s.id)?'bg-indigo-600 border-indigo-500':'bg-white/5 border-white/10 text-slate-400'}`}><Icon size={18}/> {s.label}</button>)})}</div></div>
+                            </div>
+                            <ActionButton onClick={handleNext} disabled={current.emotions.length===0} className="mt-8 w-full">Suivant</ActionButton>
+                        </div>
+                    )}
+                </GlassPanel>
+            </div>
+        );
+    };
+
+    const HeroModule = ({ onExit }) => {
+        const [step, setStep] = useState('intro');
+        const [currentQ, setCurrentQ] = useState(0);
+        const [scores, setScores] = useState({competence:0, knowledge:0, security:0, belonging:0});
+        const [aiResult, setAiResult] = useState(null);
+
+        const handleAnswer = (val) => {
+            const cat = HERO_QUIZ[currentQ].cat;
+            const newScores = {...scores, [cat]: scores[cat] + val};
+            setScores(newScores);
+            if(currentQ < HERO_QUIZ.length-1) setCurrentQ(c=>c+1);
+            else {
+                setStep('loading');
+                LYA_AI.analyzeHero(newScores).then(res => { setAiResult(res); setStep('result'); });
+            }
+        };
+
+        if(step==='intro') return <div className="h-full p-8 flex flex-col items-center justify-center text-center animate-fade-in"><Crown size={64} className="text-amber-400 mb-6"/><h2 className="text-3xl font-black mb-4">Forge des Héros</h2><p className="text-slate-400 mb-8">Découvre tes forces cachées.</p><ActionButton onClick={()=>setStep('quiz')} variant="gold">Commencer</ActionButton><button onClick={onExit} className="mt-8 text-slate-500">Quitter</button></div>;
+        if(step==='quiz') return <div className="h-full p-8 flex flex-col justify-center animate-slide-up"><h3 className="text-xl font-bold mb-8 text-center">"{HERO_QUIZ[currentQ].q}"</h3><div className="grid gap-3"><ActionButton onClick={()=>handleAnswer(3)} variant="secondary">Tout à fait</ActionButton><ActionButton onClick={()=>handleAnswer(2)} variant="secondary">Plutôt oui</ActionButton><ActionButton onClick={()=>handleAnswer(1)} variant="secondary">Plutôt non</ActionButton><ActionButton onClick={()=>handleAnswer(0)} variant="secondary">Pas du tout</ActionButton></div></div>;
+        if(step==='loading') return <div className="h-full flex items-center justify-center"><Sparkles className="animate-spin text-amber-400" size={48}/></div>;
+        
+        return (
+            <div className="h-full p-6 pt-10 flex flex-col items-center animate-fade-in">
+                <h2 className="text-2xl font-black text-white mb-6">Ton Avatar</h2>
+                <div className="w-full max-w-sm bg-gradient-to-br from-amber-500 to-orange-700 p-1 rounded-3xl shadow-2xl animate-slide-up">
+                    <div className="bg-slate-900 rounded-[20px] p-6 flex flex-col items-center text-center">
+                        <Crown className="text-amber-400 mb-4" size={40}/>
+                        <h3 className="text-2xl font-black italic text-white mb-6">{aiResult.title}</h3>
+                        <div className="w-full space-y-4">
+                            <div className="flex justify-between text-xs font-bold text-slate-400 uppercase"><span>Compétence</span><span>{Math.round(aiResult.stats.competence/15*100)}%</span></div>
+                            <div className="h-2 bg-slate-800 rounded-full"><div className="h-full bg-emerald-500" style={{width:`${aiResult.stats.competence/15*100}%`}}/></div>
+                        </div>
+                        <div className="mt-6 pt-4 border-t border-white/10 w-full text-left">
+                            <p className="text-[10px] text-amber-400 font-bold uppercase tracking-widest">Mission Lya</p>
+                            <p className="text-white text-xs mt-1">{aiResult.mission}</p>
+                        </div>
+                    </div>
+                </div>
+                <button onClick={onExit} className="mt-8 text-white font-bold">Retour</button>
+            </div>
+        );
+    };
+
+    const OracleModule = ({ onExit }) => {
+        const [result, setResult] = useState(null);
+        const [loading, setLoading] = useState(false);
+        const drawOracle = () => { setLoading(true); LYA_AI.generateOracle().then(res => { setResult(res); setLoading(false); }); };
+        return (
+            <div className="h-full p-6 pt-10 flex flex-col animate-fade-in"><header className="flex justify-between items-center mb-8"><h2 className="text-2xl font-black text-white flex gap-2"><Flame className="text-orange-500"/> L'Oracle</h2><button onClick={onExit} className="p-2 bg-white/5 rounded-full text-slate-400"><X size={20}/></button></header>{!result ? <div className="flex-1 flex flex-col items-center justify-center text-center"><div onClick={drawOracle} className="w-48 h-48 bg-gradient-to-br from-orange-500 to-red-600 rounded-full flex items-center justify-center shadow-[0_0_60px_rgba(234,88,12,0.4)] cursor-pointer active:scale-95 transition-transform animate-pulse-slow">{loading ? <Flame size={64} className="text-white animate-spin"/> : <span className="text-white font-black text-xl">TOUCHER</span>}</div><p className="mt-8 text-white font-bold text-lg">Découvre ton message</p></div> : <div className="flex-1 flex flex-col animate-slide-up" onClick={drawOracle}><GlassPanel className="p-8 border-t-4 border-t-orange-500 flex-1 flex flex-col justify-center cursor-pointer active:scale-[0.98] transition-transform"><span className="text-xs font-bold text-orange-400 uppercase tracking-widest mb-4 block">{result.title}</span><p className="text-2xl text-white leading-relaxed font-serif italic font-medium">{result.text}</p><div className="mt-auto pt-8 text-center text-slate-500 text-xs uppercase tracking-widest flex items-center justify-center gap-2"><Zap size={14}/> Tap pour un autre message</div></GlassPanel></div>}</div>
+        );
+    };
+
+    const IdentityModule = ({ onExit, user }) => {
+        const [index, setIndex] = useState(0); const [answers, setAnswers] = useState({}); const [currentInput, setCurrentInput] = useState(""); const [synthesis, setSynthesis] = useState(null); const [analyzing, setAnalyzing] = useState(false);
+        const question = IDENTITY_SHORT_QUESTIONS[index]; const progress = ((index) / IDENTITY_SHORT_QUESTIONS.length) * 100;
+        const handleNext = (val) => { const finalVal = val || currentInput || "Passé"; setAnswers({...answers, [question.id]: finalVal}); setCurrentInput(""); if (index < IDENTITY_SHORT_QUESTIONS.length - 1) setIndex(index + 1); else { setIndex(index+1); setAnalyzing(true); LYA_AI.synthesizeIdentity(answers).then(res => { setSynthesis(res); setAnalyzing(false); }); } };
+
+        if (index >= IDENTITY_SHORT_QUESTIONS.length) return (
+            <div className="h-full p-6 pt-10 flex flex-col animate-fade-in"><header className="flex justify-between items-center mb-8"><h2 className="text-2xl font-black text-white">Mon Profil</h2><button onClick={onExit} className="p-2 bg-white/5 rounded-full text-slate-400"><X size={20}/></button></header>{analyzing ? <div className="text-center mt-20"><Sparkles className="animate-spin text-fuchsia-500 mx-auto mb-4"/>Lya rédige ta synthèse...</div> : <div className="flex-1 overflow-y-auto space-y-4 pb-8"><GlassPanel className="p-6 border-fuchsia-500/30"><div className="flex items-center gap-2 mb-3"><Sparkles size={16} className="text-fuchsia-400"/><span className="text-xs font-bold text-fuchsia-400 uppercase">Synthèse de Lya</span></div><p className="text-white italic leading-relaxed">"{synthesis}"</p></GlassPanel>{IDENTITY_SHORT_QUESTIONS.map(q => (<div key={q.id} className="bg-white/5 p-4 rounded-xl border border-white/5"><p className="text-xs text-indigo-300 font-bold uppercase mb-1">{q.label}</p><p className="text-white font-medium">{answers[q.id]}</p></div>))}</div>}<ActionButton onClick={() => window.location.href=`mailto:?body=${encodeURIComponent(JSON.stringify(answers))}`} variant="accent" className="mt-4"><Share2/> Envoyer à mon psy</ActionButton></div>
+        );
+        return (
+            <div className="h-full p-6 pt-10 bg-slate-900 flex flex-col relative animate-fade-in"><button onClick={onExit} className="absolute top-6 right-6 p-2 bg-white/5 rounded-full text-slate-400"><X size={20}/></button><div className="w-full h-1 bg-slate-800 rounded-full mb-8 mt-4"><div className="h-full bg-gradient-to-r from-violet-500 to-fuchsia-500 transition-all duration-300" style={{width: `${progress}%`}}/></div><div className="flex-1 flex flex-col justify-center"><span className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-4">Item {index + 1}</span><h2 className="text-4xl font-black text-white mb-8 leading-tight">{question.label} ?</h2><input autoFocus value={currentInput} onChange={(e) => setCurrentInput(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleNext()} className="w-full bg-transparent border-b-2 border-slate-700 text-3xl font-bold text-white pb-2 focus:outline-none focus:border-fuchsia-500 transition-colors placeholder-slate-800" placeholder="..."/><div className="mt-12 flex gap-4"><button onClick={() => handleNext("Joker")} className="p-4 rounded-xl border border-slate-700 text-slate-500 font-bold text-sm hover:text-white transition-colors"><SkipForward/></button><ActionButton onClick={() => handleNext()} disabled={!currentInput} className="flex-1">Valider</ActionButton></div></div></div>
+        );
+    };
+
+    const Journal = ({ onExit }) => {
+        const [entries, setEntries] = useState([{ id: 1, date: 'Hier', title: "Note rapide", text: "Rien de spécial..." }]); const [isWriting, setIsWriting] = useState(false); const [newNote, setNewNote] = useState({ title: '', text: '' });
+        const saveEntry = () => { if(!newNote.text) return; const now = new Date(); const dateStr = now.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'short' }); const timeStr = now.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }); setEntries([{ id: Date.now(), date: `${dateStr} à ${timeStr}`, ...newNote }, ...entries]); setNewNote({ title: '', text: '' }); setIsWriting(false); };
+        return (
+            <div className="h-full bg-slate-900 flex flex-col relative">{!isWriting ? (<><header className="p-6 pt-10 flex justify-between items-center bg-slate-900/90 backdrop-blur-md z-10 sticky top-0 shrink-0"><h2 className="text-2xl font-black text-white flex items-center gap-3"><Book className="text-indigo-400"/> Journal</h2><button onClick={onExit} className="p-2 bg-white/5 rounded-full text-slate-400"><X size={20}/></button></header><div className="flex-1 overflow-y-auto p-6 space-y-4 pb-32 scrollbar-hide">{entries.length === 0 && <div className="text-slate-500 text-center mt-20">Rien ici pour l'instant.</div>}{entries.map(e => (<GlassPanel key={e.id} className="p-5 active:scale-[0.98] transition-transform"><div className="flex justify-between mb-2"><span className="text-[10px] font-bold text-indigo-300 uppercase flex items-center gap-1"><Clock size={10}/> {e.date}</span></div><h3 className="font-bold text-white mb-1">{e.title}</h3><p className="text-slate-400 text-sm line-clamp-2">{e.text}</p></GlassPanel>))}</div><button onClick={() => setIsWriting(true)} className="absolute bottom-24 right-6 w-14 h-14 rounded-full bg-fuchsia-600 text-white flex items-center justify-center shadow-lg shadow-fuchsia-600/40 hover:scale-110 transition-transform z-20"><Plus size={28}/></button></>) : (<div className="absolute inset-0 bg-slate-900 z-50 flex flex-col animate-slide-up h-full"><header className="p-6 pt-10 flex justify-between items-center shrink-0"><button onClick={() => setIsWriting(false)} className="text-slate-400 font-bold p-2">Annuler</button><h3 className="text-white font-bold">Nouvelle Note</h3><button onClick={saveEntry} className="text-emerald-400 font-bold p-2">Enregistrer</button></header><div className="flex-1 p-6 flex flex-col gap-4 overflow-y-auto"><input placeholder="Titre..." value={newNote.title} onChange={e => setNewNote({...newNote, title: e.target.value})} className="bg-transparent text-3xl font-black text-white placeholder-slate-700 focus:outline-none shrink-0"/><textarea placeholder="Écris ce que tu as sur le coeur..." value={newNote.text} onChange={e => setNewNote({...newNote, text: e.target.value})} className="flex-1 bg-transparent text-lg text-slate-300 placeholder-slate-700 resize-none focus:outline-none leading-relaxed h-full"/></div></div>)}</div>
+        );
+    };
+
+    const BreathModule = ({ onExit }) => {
+        const [phase, setPhase] = useState('Inspire'); const [scale, setScale] = useState(1);
+        useEffect(() => { const cycle = () => { setPhase('Inspire (4s)'); setScale(1.5); setTimeout(() => { setPhase('Bloque (2s)'); setTimeout(() => { setPhase('Expire (6s)'); setScale(1); }, 2000); }, 4000); }; cycle(); const interval = setInterval(cycle, 12000); return () => clearInterval(interval); }, []);
+        return (
+            <div className="h-full flex flex-col items-center justify-center bg-slate-900 relative overflow-hidden animate-fade-in"><button onClick={onExit} className="absolute top-6 right-6 text-slate-400 z-50"><X size={24}/></button><div className="text-center relative z-10"><h2 className="text-3xl font-black text-white mb-2">{phase}</h2><p className="text-teal-300 text-sm font-bold uppercase tracking-widest">Cohérence Cardiaque</p></div><div className="relative mt-12 w-64 h-64 flex items-center justify-center"><div className="w-32 h-32 bg-gradient-to-br from-teal-400 to-emerald-500 rounded-full shadow-[0_0_50px_rgba(45,212,191,0.5)] transition-all ease-in-out" style={{ transform: `scale(${scale})`, transitionDuration: phase.includes('Inspire')?'4000ms':phase.includes('Expire')?'6000ms':'0ms' }}/><div className="absolute inset-0 border-2 border-white/10 rounded-full animate-ping opacity-20"/></div></div>
+        );
+    };
+
+    const AIFeedback = ({ onExit }) => {
+        const [loading, setLoading] = useState(true);
+        useEffect(() => { setTimeout(() => setLoading(false), 3000); }, []);
+        if (loading) return (
+            <div className="h-full flex flex-col items-center justify-center p-8 bg-slate-900"><div className="w-24 h-24 bg-gradient-to-tr from-violet-600 to-indigo-600 rounded-full flex items-center justify-center shadow-[0_0_40px_rgba(139,92,246,0.5)] animate-pulse"><Sparkles className="text-white" size={40}/></div><h2 className="text-2xl font-black text-white mt-8 mb-2">Analyse Lya...</h2><p className="text-slate-400 text-sm">L'assistant étudie tes réponses.</p></div>
+        );
+        return (
+            <div className="h-full bg-slate-900 p-6 overflow-y-auto animate-fade-in pb-20 scrollbar-hide"><div className="flex justify-center mb-6"><div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-300 text-xs font-bold uppercase"><Sparkles size={12}/> Bilan IA</div></div><h1 className="text-3xl font-black text-white text-center mb-8">Ton paysage intérieur</h1><div className="space-y-6"><GlassPanel className="p-6"><h3 className="text-lg font-bold text-white mb-2">👋 Observation</h3><p className="text-slate-300 leading-relaxed text-sm">On observe une belle capacité à identifier tes émotions aujourd'hui. N'oublie pas que même dans les moments "Vides", demander de l'aide est une force.</p></GlassPanel><GlassPanel className="p-6 bg-gradient-to-br from-indigo-900/50 to-slate-900/50"><h3 className="text-lg font-bold text-white mb-2 flex items-center gap-2"><Zap size={18} className="text-yellow-400"/> Conseil</h3><p className="text-slate-300 leading-relaxed text-sm italic">"Continue de pratiquer la gratitude. C'est un muscle qui se travaille et qui change la vision du monde."</p></GlassPanel></div><ActionButton onClick={onExit} className="w-full mt-8" variant="secondary">Retour au Dashboard</ActionButton></div>
+        );
+    };
+
+    // --- MAIN APP ---
+    const App = () => {
+        const [view, setView] = useState('auth');
+        const [user, setUser] = useState(null);
+        const [echoHistory, setEchoHistory] = useState([]);
+
+        // Montage des icônes Lucide (nécessaire en standalone)
+        useEffect(() => { if(window.lucide) window.lucide.createIcons(); }, [view]);
+
+        return (
+            <div className="w-full h-screen max-w-md mx-auto bg-slate-900 shadow-2xl border-x border-white/5 relative flex flex-col">
+                <div className="flex-1 overflow-hidden">
+                    {view === 'auth' && <AuthScreen onLogin={u => { setUser(u); setView('dashboard'); }} />}
+                    {view === 'dashboard' && <Dashboard onNavigate={setView} user={user} />}
+                    {view === 'echo' && <EchoGame onExit={()=>setView('dashboard')} onFinish={(h) => { setEchoHistory(h); setView('feedback'); }}/>}
+                    {view === 'feedback' && <AIFeedback history={echoHistory} onExit={() => setView('dashboard')} />}
+                    {view === 'hero' && <HeroModule onExit={()=>setView('dashboard')}/>}
+                    {view === 'oracle' && <OracleModule onExit={()=>setView('dashboard')}/>}
+                    {view === 'identity' && <IdentityModule onExit={()=>setView('dashboard')} user={user}/>}
+                    {view === 'breath' && <BreathModule onExit={()=>setView('dashboard')}/>}
+                    {view === 'journal' && <Journal onExit={()=>setView('dashboard')}/>}
+                    {view === 'profile' && <IdentityModule onExit={()=>setView('dashboard')} user={user}/>}
+                </div>
+                
+                {view === 'dashboard' && (
+                    <div className="absolute bottom-8 left-1/2 -translate-x-1/2 w-[90%] h-16 bg-[#0f0b1e]/90 backdrop-blur-xl border border-white/10 rounded-full flex items-center justify-around px-4 shadow-2xl z-50">
+                        <NavIcon Icon={Home} active onClick={()=>setView('dashboard')}/>
+                        <NavIcon Icon={Wind} onClick={()=>setView('breath')}/>
+                        <button onClick={()=>setView('oracle')} className="w-12 h-12 rounded-full bg-gradient-to-tr from-orange-500 to-red-600 text-white flex items-center justify-center shadow-lg -translate-y-4 border-4 border-[#0f0b1e]"><Flame size={22}/></button>
+                        <NavIcon Icon={Shield} onClick={()=>setView('hero')}/>
+                        <NavIcon Icon={User} onClick={()=>setView('profile')}/>
+                    </div>
+                )}
+            </div>
+        );
+    };
+
+    return <App />;
+}
+
+
